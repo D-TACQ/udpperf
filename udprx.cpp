@@ -22,7 +22,7 @@ CLI::App app{"UDP receiver with 32 bit sequence number check."};
 
 int main(int argc, char *argv[]) {
   app.add_option("-p, --port", Settings.UDPPort, "UDP receive port");
-  app.add_option("-s, --size", Settings.DataSize, "User data size");
+  //app.add_option("-s, --size", Settings.DataSize, "User data size");
   app.add_option("-b, --socket_buffer_size", Settings.SocketBufferSize, "socket buffer size (bytes)");
   app.add_option("--spp", Settings.SamplesPerPacket, "Samples per packet");
   app.add_option("--ssb", Settings.SampleSizeBytes, "Sample size (bytes)");
@@ -47,6 +47,8 @@ int main(int argc, char *argv[]) {
   Receive.setBufferSizes(Settings.SocketBufferSize, Settings.SocketBufferSize);
   Receive.printBufferSizes();
 
+  Settings.DataSize = Settings.SampleSizeBytes*Settings.SamplesPerPacket;
+
   Timer UpdateTimer;
   auto USecs = UpdateTimer.timeus();
 
@@ -63,6 +65,11 @@ int main(int argc, char *argv[]) {
       RxPackets++;
     }
 
+    // Grab the first SPAD Count in case we're not starting from 1
+    if (RxPackets == 1) {
+        SpadTracker = *((uint32_t *)( buffer + 4*Settings.CountColumn ));
+    }
+
     for (int i = 0; i <= Settings.SamplesPerPacket-1; i++) {
         SpadIndex = ( i*Settings.SampleSizeBytes+4*Settings.CountColumn );
             //printf("%i\n",SpadIndex);fflush(stdout);
@@ -72,7 +79,8 @@ int main(int argc, char *argv[]) {
         }
         if (SpadTracker != SpadCount) {
             ErrCount = ErrCount + 1;
-            printf("Deviation! ErrCount = %i, Expected SPAD : %i, Received SPAD : %i\n", ErrCount, SpadTracker, SpadCount);fflush(stdout);
+            printf("Deviation! ErrCount = %i, Expected SPAD : %i, Received SPAD : %i, Completed Packets = %li, Byte Jump = %i\n", ErrCount, SpadTracker, SpadCount, RxPackets-1, (Settings.SampleSizeBytes * (SpadCount - SpadTracker)) );fflush(stdout);
+            SpadTracker = SpadCount; // Ignore error, reinitialise tracker variable
             if (ErrCount > 9) {
                 abort();
             }
