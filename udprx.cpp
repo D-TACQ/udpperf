@@ -72,10 +72,10 @@ int main(int argc, char *argv[]) {
 
     for (int i = 0; i <= Settings.SamplesPerPacket-1; i++) {
         SpadIndex = ( i*Settings.SampleSizeBytes+4*Settings.CountColumn );
-            //printf("%i\n",SpadIndex);fflush(stdout);
+
         SpadCount = *((uint32_t *)( buffer + SpadIndex ));
         if (RxPackets <= 5) {
-            printf("%#010x    %i\n",SpadCount,SpadCount);fflush(stdout);
+            //printf("%#010x    %i\n",SpadCount,SpadCount);fflush(stdout);
         }
         if (SpadTracker != SpadCount) {
             ErrCount = ErrCount + 1;
