@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
         }
         if (SpadTracker != SpadCount) {
             ErrCount = ErrCount + 1;
-            printf("Deviation! ErrCount = %i, Expected SPAD : %i, Received SPAD : %i, Completed Packets = %li, Byte Jump = %i\n", ErrCount, SpadTracker, SpadCount, RxPackets-1, (Settings.SampleSizeBytes * (SpadCount - SpadTracker)) );fflush(stdout);
+            printf("Deviation! ErrCount = %i, Expected SPAD : %i, Received SPAD : %i, Completed Packets = %li, Sample Jump = %i\n", ErrCount, SpadTracker, SpadCount, RxPackets-1, (Settings.SampleSizeBytes * (SpadCount - SpadTracker)) );fflush(stdout);
             SpadTracker = SpadCount; // Ignore error, reinitialise tracker variable
             if (ErrCount > 9) {
                 abort();
