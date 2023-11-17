@@ -17,6 +17,19 @@ struct {
   int SampleSizeBytes{64};
   int CountColumn{1};
 } Settings;
+  
+void fmtElapsedTime(char *str, int tick, int tock) {
+  int elapsed = tock - tick;
+  int hours = elapsed / 3600;
+  
+  elapsed %= 3600;
+  int minutes = elapsed / 60 ;
+ 
+  elapsed %= 60;
+  int seconds = elapsed;
+  
+  snprintf(str,10,"%02i:%02i:%02i",hours,minutes,seconds);  
+}
 
 CLI::App app{"UDP receiver with 32 bit sequence number check."};
 
@@ -39,8 +52,11 @@ int main(int argc, char *argv[]) {
   uint32_t SpadCount{1};
   int ErrCount{0};
   int SpadIndex{0};
+  char elapsed_str[10];
   const int intervalUs = 1000000;
   const int B1M = 1000000;
+  time_t tick{0};
+  time_t tock{0};
 
   Socket::Endpoint local("0.0.0.0", Settings.UDPPort);
   UDPReceiver Receive(local);
@@ -67,6 +83,7 @@ int main(int argc, char *argv[]) {
 
     // Grab the first SPAD Count in case we're not starting from 1
     if (RxPackets == 1) {
+        tick = time(0);
         SpadTracker = *((uint32_t *)( buffer + 4*Settings.CountColumn ));
     }
 
@@ -79,7 +96,7 @@ int main(int argc, char *argv[]) {
         }
         if (SpadTracker != SpadCount) {
             ErrCount = ErrCount + 1;
-            printf("Deviation! ErrCount = %i, Expected SPAD : %i, Received SPAD : %i, Completed Packets = %li, Sample Jump = %i\n", ErrCount, SpadTracker, SpadCount, RxPackets-1, (Settings.SampleSizeBytes * (SpadCount - SpadTracker)) );fflush(stdout);
+            printf("Deviation! ErrCount = %i, Expected SPAD : %i, Received SPAD : %i, Completed Packets = %li, Sample Jump = %i, Packets Lost = %i\n", ErrCount, SpadTracker, SpadCount, RxPackets-1, (Settings.SampleSizeBytes * (SpadCount - SpadTracker)), ((SpadCount - SpadTracker)/Settings.SamplesPerPacket) );fflush(stdout);
             SpadTracker = SpadCount; // Ignore error, reinitialise tracker variable
             if (ErrCount > 9) {
                 abort();
@@ -93,10 +110,10 @@ int main(int argc, char *argv[]) {
 
     if (USecs >= intervalUs) {
       RxBytesTotal += RxBytes;
-      printf("Rx rate: %.2f Mbps, rx %" PRIu64 " MB (total: %" PRIu64
-             " MB) %" PRIu64 " usecs, PER %4.3e\n",
-             RxBytes * 8.0 / (USecs / 1000000.0) / B1M, RxBytes / B1M, RxBytesTotal / B1M,
-             USecs, (1.0 * ErrCount / RxPackets));
+      time_t tock = time(0);
+      fmtElapsedTime(elapsed_str,tick,tock);
+      printf("Rx rate: %.2f Mbps, rx %" PRIu64 " MB (total: %" PRIu64 " MB), Elapsed %s, ErrCount = %i, PER %4.3e\n",
+             RxBytes * 8.0 / (USecs / 1000000.0) / B1M, RxBytes / B1M, RxBytesTotal / B1M, elapsed_str, ErrCount, (1.0 * ErrCount / RxPackets));
       RxBytes = 0;
       UpdateTimer.now();
       USecs = UpdateTimer.timeus();
