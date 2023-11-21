@@ -53,7 +53,8 @@ int main(int argc, char *argv[]) {
   int ErrCount{0};
   int SpadIndex{0};
   char elapsed_str[10];
-  const int intervalUs = 1000000;
+  const int intervalUs = 10000000;
+  const int interval_s = intervalUs / 1000000;
   const int B1M = 1000000;
   time_t tick{0};
   time_t tock{0};
@@ -113,7 +114,7 @@ int main(int argc, char *argv[]) {
       time_t tock = time(0);
       fmtElapsedTime(elapsed_str,tick,tock);
       printf("Rx rate: %.2f Mbps, rx %" PRIu64 " MB (total: %" PRIu64 " MB), Elapsed %s, ErrCount = %i, PER %4.3e\n",
-             RxBytes * 8.0 / (USecs / 1000000.0) / B1M, RxBytes / B1M, RxBytesTotal / B1M, elapsed_str, ErrCount, (1.0 * ErrCount / RxPackets));
+             RxBytes * 8.0 / (USecs / 1000000.0) / B1M, RxBytes / B1M / interval_s, RxBytesTotal / B1M, elapsed_str, ErrCount, (1.0 * ErrCount / RxPackets));
       RxBytes = 0;
       UpdateTimer.now();
       USecs = UpdateTimer.timeus();
