@@ -58,6 +58,7 @@ int main(int argc, char *argv[]) {
   const int B1M = 1000000;
   time_t tick{0};
   time_t tock{0};
+  bool deviation = false;
 
   Socket::Endpoint local("0.0.0.0", Settings.UDPPort);
   UDPReceiver Receive(local);
@@ -92,15 +93,18 @@ int main(int argc, char *argv[]) {
         SpadIndex = ( i*Settings.SampleSizeBytes+4*Settings.CountColumn );
 
         SpadCount = *((uint32_t *)( buffer + SpadIndex ));
-        if (RxPackets <= 5) {
-            //printf("%#010x    %i\n",SpadCount,SpadCount);fflush(stdout);
+        if (RxPackets <= 5 || deviation == true) {
+            printf("%#010x    %i\n",SpadCount,SpadCount);fflush(stdout);
+	    deviation = false;
         }
         if (SpadTracker != SpadCount) {
+	    deviation = true;
             ErrCount = ErrCount + 1;
-            printf("Deviation! ErrCount = %i, Expected SPAD : %i, Received SPAD : %i, Completed Packets = %li, Sample Jump = %i, Packets Lost = %i\n", ErrCount, SpadTracker, SpadCount, RxPackets-1, (Settings.SampleSizeBytes * (SpadCount - SpadTracker)), ((SpadCount - SpadTracker)/Settings.SamplesPerPacket) );fflush(stdout);
+            printf("Deviation! ErrCount = %i, Expected SPAD : %i, Received SPAD : %i, Completed Packets = %li, Sample Jump = %i, Packets Lost = %i, Bytes = %i\n", \
+			    ErrCount, SpadTracker, SpadCount, RxPackets-1, ((SpadCount - SpadTracker) / Settings.SamplesPerPacket), (SpadCount - SpadTracker)/Settings.SamplesPerPacket, (Settings.SampleSizeBytes * (SpadCount - SpadTracker)/Settings.SamplesPerPacket));fflush(stdout);
             SpadTracker = SpadCount; // Ignore error, reinitialise tracker variable
             if (ErrCount > 9) {
-                abort();
+                exit(0);
             }
         }
         SpadTracker = SpadTracker + 1;
