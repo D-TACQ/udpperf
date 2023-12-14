@@ -9,6 +9,9 @@
 #include <common/Timer.h>
 #include <stdio.h>
 
+#include "rt.h"
+
+
 struct {
   int UDPPort{9000};
   int DataSize{9000};
@@ -16,6 +19,7 @@ struct {
   int SamplesPerPacket{1};
   int SampleSizeBytes{64};
   int CountColumn{1};
+  int RtPrio;
 } Settings;
   
 void fmtElapsedTime(char *str, int tick, int tock) {
@@ -40,6 +44,7 @@ int main(int argc, char *argv[]) {
   app.add_option("--spp", Settings.SamplesPerPacket, "Samples per packet");
   app.add_option("--ssb", Settings.SampleSizeBytes, "Sample size (bytes)");
   app.add_option("-c, --count_column", Settings.CountColumn, "Count column (indexed from 0)");
+  app.add_option("-R, --rt_prio", Settings.RtPrio, "set POSIX RT priority (0: no set)");
   CLI11_PARSE(app, argc, argv);
 
   static const int BUFFERSIZE{9200};
@@ -60,6 +65,9 @@ int main(int argc, char *argv[]) {
   time_t tock{0};
   bool deviation = false;
 
+  if (Settings.RtPrio){
+    goRealTime(Settings.RtPrio);
+  }	  
   Socket::Endpoint local("0.0.0.0", Settings.UDPPort);
   UDPReceiver Receive(local);
   Receive.setBufferSizes(Settings.SocketBufferSize, Settings.SocketBufferSize);
