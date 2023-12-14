@@ -23,6 +23,7 @@ struct {
   int RtPrio{0};
   int outfd{-1};
   int quiet{0};
+  int maxerrs{9};
 } Settings;
   
 void fmtElapsedTime(char *str, int tick, int tock) {
@@ -50,6 +51,7 @@ int main(int argc, char *argv[]) {
   app.add_option("-R, --rt_prio", Settings.RtPrio, "set POSIX RT priority (0: no set)");
   app.add_option("-o, --output", Settings.outfd, "1: output data to stdout");
   app.add_option("-q, --quiet", Settings.quiet, "1: stop reporting");
+  app.add_option("-M, --max_errs", Settings.maxerrs, "stop after this many errors");
   CLI11_PARSE(app, argc, argv);
 
   static const int BUFFERSIZE{9200};
@@ -57,7 +59,7 @@ int main(int argc, char *argv[]) {
   uint64_t RxBytesTotal{0};
   uint64_t RxBytes{0};
   uint64_t RxPackets{0};
-  uint32_t SeqNo{0};
+  uint64_t RxPacketsLastError{0};
   uint32_t SpadTracker{1};
   uint32_t SpadCount{1};
   int ErrCount{0};
@@ -89,7 +91,6 @@ int main(int argc, char *argv[]) {
     assert(ReadSize > 0);
     assert(ReadSize == Settings.DataSize);
 
-    SeqNo = *((uint32_t *)buffer);
     RxBytes += ReadSize;
     RxPackets++;
     if (RxPackets == 1){
@@ -102,25 +103,30 @@ int main(int argc, char *argv[]) {
             SpadTracker = *((uint32_t *)( buffer + 4*Settings.CountColumn ));
         }
 
+    	int samples = (RxPackets-1)*Settings.SamplesPerPacket;   /* count samples in loop */
         for (int i = 0; i <= Settings.SamplesPerPacket-1; i++) {
-            SpadIndex = ( i*Settings.SampleSizeBytes+4*Settings.CountColumn );
+            SpadIndex = i*Settings.SampleSizeBytes + 4*Settings.CountColumn;
 
             SpadCount = *((uint32_t *)( buffer + SpadIndex ));
-            if (RxPackets <= 5 || deviation == true) {
-                fprintf(stderr, "%#010x    %i\n",SpadCount,SpadCount);fflush(stdout);
+            if (samples+i < 5 || deviation == true) {
+                fprintf(stderr, "%#010x    %i %s\n", SpadCount, SpadCount, deviation? "dev":"ini");
 	        deviation = false;
             }
             if (SpadTracker != SpadCount) {
 	        deviation = true;
                 ErrCount = ErrCount + 1;
-                fprintf(stderr, "Deviation! ErrCount = %i, Expected SPAD : %i, Received SPAD : %i," \
-			        " Completed Packets = %li, Sample Jump = %i, Packets Lost = %i, Bytes = %i\n", 
+                fprintf(stderr, "Deviation! Err=%i Expected=%i Received=%i " \
+			        "Packets=%li PacketsSinceLast=%li " \
+				"SampleJump=%i PacketsLost=%i Bytes=%i\n", 
 			    ErrCount, SpadTracker, SpadCount, 
-			    RxPackets-1, ((SpadCount - SpadTracker) / Settings.SamplesPerPacket), (SpadCount - SpadTracker)/Settings.SamplesPerPacket, 
+			    RxPackets-1, RxPackets-1-RxPacketsLastError, 
+			    ((SpadCount - SpadTracker) / Settings.SamplesPerPacket), (SpadCount - SpadTracker)/Settings.SamplesPerPacket, 
 			    (Settings.SampleSizeBytes * (SpadCount - SpadTracker)/Settings.SamplesPerPacket));
-		fflush(stdout);
-            SpadTracker = SpadCount; // Ignore error, reinitialise tracker variable
-                if (ErrCount > 9) {
+		fflush(stderr);
+		RxPacketsLastError = RxPackets;
+                SpadTracker = SpadCount; // Ignore error, reinitialise tracker variable
+                if (ErrCount > Settings.maxerrs) {
+		    fprintf(stderr, "Maximum error count reached, quitting\n");
                     exit(0);
                 }
             }
@@ -130,8 +136,9 @@ int main(int argc, char *argv[]) {
     if (Settings.outfd >= 0){
         write(Settings.outfd, buffer, ReadSize);
     }
-    if ((RxPackets % 100) == 0)
-      USecs = UpdateTimer.timeus();
+    if ((RxPackets % 100) == 0){
+    	USecs = UpdateTimer.timeus();
+    }
 
     if (!Settings.quiet && USecs >= intervalUs) {
       RxBytesTotal += RxBytes;
