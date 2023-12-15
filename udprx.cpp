@@ -24,6 +24,7 @@ struct {
   int outfd{-1};
   int quiet{0};
   int maxerrs{9};
+  uint64_t maxsamples{0};
 } Settings;
   
 void fmtElapsedTime(char *str, int tick, int tock) {
@@ -51,6 +52,7 @@ int main(int argc, char *argv[]) {
   app.add_option("-R, --rt_prio", Settings.RtPrio, "set POSIX RT priority (0: no set)");
   app.add_option("-o, --output", Settings.outfd, "1: output data to stdout");
   app.add_option("-q, --quiet", Settings.quiet, "1: stop reporting");
+  app.add_option("-S, --max_samples", Settings.maxsamples, "stop after this many samples, 0: no limit");
   app.add_option("-M, --max_errs", Settings.maxerrs, "stop after this many errors");
   CLI11_PARSE(app, argc, argv);
 
@@ -85,7 +87,10 @@ int main(int argc, char *argv[]) {
   Timer UpdateTimer;
   auto USecs = UpdateTimer.timeus();
 
-  for (;;) {
+  for (uint64_t samples = 0; 
+       Settings.maxsamples == 0 || samples < Settings.maxsamples; 
+       samples+=Settings.SamplesPerPacket) {
+
     int ReadSize = Receive.receive(buffer, BUFFERSIZE);
 
     assert(ReadSize > 0);
@@ -103,7 +108,6 @@ int main(int argc, char *argv[]) {
             SpadTracker = *((uint32_t *)( buffer + 4*Settings.CountColumn ));
         }
 
-    	int samples = (RxPackets-1)*Settings.SamplesPerPacket;   /* count samples in loop */
         for (int i = 0; i <= Settings.SamplesPerPacket-1; i++) {
             SpadIndex = i*Settings.SampleSizeBytes + 4*Settings.CountColumn;
 
@@ -151,6 +155,7 @@ int main(int argc, char *argv[]) {
       UpdateTimer.now();
       USecs = UpdateTimer.timeus();
     }
-  }
+    
+  } // for (samples)
 }
 
