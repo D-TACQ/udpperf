@@ -1,0 +1,18 @@
+UUT=$1
+echo $UUT
+runs=${2:-2}
+minutes=${3:-10}
+samples=$(( $minutes*60*1000000 ))
+echo Capture $samples samples
+
+for i in $(seq -w 1 $runs)
+do
+	echo Run $i
+	echo Run $i > logs/run${i}.log
+	date >> logs/run${i}.log 
+	sudo ./udprx -R 40 -p 53676 --spp 20 --ssb 448 -c 96 -S ${samples} >> logs/run${i}.log 2>&1 & PID_RX=$!
+	python3 ../acq400_hapi/user_apps/acq400/acq400_continuous.py --run=1 $UUT
+	wait  $PID_RX
+	python3 ../acq400_hapi/user_apps/acq400/acq400_continuous.py --stop=1 $UUT
+done
+
