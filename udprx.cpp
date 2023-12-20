@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
 				"SampleJump=%i PacketsLost=%i Bytes=%i\n", 
 			    ErrCount, SpadTracker, SpadCount, 
 			    RxPackets-1, RxPackets-1-RxPacketsLastError, 
-			    ((SpadCount - SpadTracker) / Settings.SamplesPerPacket), (SpadCount - SpadTracker)/Settings.SamplesPerPacket, 
+			    (SpadCount - SpadTracker), (SpadCount - SpadTracker)/Settings.SamplesPerPacket, 
 			    (Settings.SampleSizeBytes * (SpadCount - SpadTracker)/Settings.SamplesPerPacket));
 		fflush(stderr);
 		RxPacketsLastError = RxPackets;
@@ -148,9 +148,15 @@ int main(int argc, char *argv[]) {
       RxBytesTotal += RxBytes;
       time_t tock = time(0);
       fmtElapsedTime(elapsed_str,tick,tock);
-      fprintf(stderr, "Rx rate: %.2f Mbps, rx %" PRIu64 " MB (total: %" PRIu64 " MB), Elapsed %s, ErrCount = %i, PER %4.3e\n",
-             RxBytes * 8.0 / (USecs / 1000000.0) / B1M, RxBytes / B1M / interval_s, 
-	     RxBytesTotal / B1M, elapsed_str, ErrCount, (1.0 * ErrCount / RxPackets));
+      if (Settings.CountColumn >= 0){
+            fprintf(stderr, "Rx rate: %.2f Mbps, rx %" PRIu64 " MB (total: %" PRIu64 " MB), Elapsed %s, ErrCount = %i, PER %4.3e\n",
+                   RxBytes * 8.0 / (USecs / 1000000.0) / B1M, RxBytes / B1M / interval_s, 
+	           RxBytesTotal / B1M, elapsed_str, ErrCount, (1.0 * ErrCount / RxPackets));
+      } else {
+            fprintf(stderr, "Rx rate: %.2f Mbps, rx %" PRIu64 " MB (total: %" PRIu64 " MB), Elapsed %s\n",
+                   RxBytes * 8.0 / (USecs / 1000000.0) / B1M, RxBytes / B1M / interval_s, 
+	           RxBytesTotal / B1M, elapsed_str);
+      }
       RxBytes = 0;
       UpdateTimer.now();
       USecs = UpdateTimer.timeus();
