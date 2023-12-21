@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
 			    ErrCount, SpadTracker, SpadCount, 
 			    RxPackets-1, RxPackets-1-RxPacketsLastError, 
 			    (SpadCount - SpadTracker), (SpadCount - SpadTracker)/Settings.SamplesPerPacket, 
-			    (Settings.SampleSizeBytes * (SpadCount - SpadTracker)/Settings.SamplesPerPacket));
+			    (Settings.SampleSizeBytes * (SpadCount - SpadTracker)));
 		fflush(stderr);
 		PktsLost = PktsLost + (SpadCount - SpadTracker)/Settings.SamplesPerPacket;
 		RxPacketsLastError = RxPackets;
