@@ -64,6 +64,7 @@ int main(int argc, char *argv[]) {
   uint64_t RxPacketsLastError{0};
   uint32_t SpadTracker{1};
   uint32_t SpadCount{1};
+  uint32_t PktsLost{0};
   int ErrCount{0};
   int SpadIndex{0};
   char elapsed_str[10];
@@ -127,6 +128,7 @@ int main(int argc, char *argv[]) {
 			    (SpadCount - SpadTracker), (SpadCount - SpadTracker)/Settings.SamplesPerPacket, 
 			    (Settings.SampleSizeBytes * (SpadCount - SpadTracker)/Settings.SamplesPerPacket));
 		fflush(stderr);
+		PktsLost = PktsLost + (SpadCount - SpadTracker)/Settings.SamplesPerPacket;
 		RxPacketsLastError = RxPackets;
                 SpadTracker = SpadCount; // Ignore error, reinitialise tracker variable
                 if (ErrCount > Settings.maxerrs) {
@@ -149,13 +151,12 @@ int main(int argc, char *argv[]) {
       time_t tock = time(0);
       fmtElapsedTime(elapsed_str,tick,tock);
       if (Settings.CountColumn >= 0){
-            fprintf(stderr, "Rx rate: %.2f Mbps, rx %" PRIu64 " MB (total: %" PRIu64 " MB), Elapsed %s, ErrCount = %i, PER %4.3e\n",
-                   RxBytes * 8.0 / (USecs / 1000000.0) / B1M, RxBytes / B1M / interval_s, 
-	           RxBytesTotal / B1M, elapsed_str, ErrCount, (1.0 * ErrCount / RxPackets));
+            fprintf(stderr, "Rx rate: %" PRIu64 " MB/s (total: %" PRIu64 " MB), Elapsed %s, PktRec = %i, ErrCount = %i, PktsLost = %i, PER %4.3e\n",
+                   RxBytes / B1M / interval_s, RxBytesTotal / B1M, elapsed_str, RxPackets, ErrCount, PktsLost, (1.0 * PktsLost / (RxPackets + PktsLost)) );
       } else {
-            fprintf(stderr, "Rx rate: %.2f Mbps, rx %" PRIu64 " MB (total: %" PRIu64 " MB), Elapsed %s\n",
+            fprintf(stderr, "Rx rate: %.2f Mbps, rx %" PRIu64 " MB/s (total: %" PRIu64 " MB), Elapsed %s, PktRec = %i\n",
                    RxBytes * 8.0 / (USecs / 1000000.0) / B1M, RxBytes / B1M / interval_s, 
-	           RxBytesTotal / B1M, elapsed_str);
+	           RxBytesTotal / B1M, elapsed_str, RxPackets);
       }
       RxBytes = 0;
       UpdateTimer.now();
