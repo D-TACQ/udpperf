@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
       time_t tock = time(0);
       fmtElapsedTime(elapsed_str,tick,tock);
       if (Settings.CountColumn >= 0){
-            fprintf(stderr, "Rx rate: %" PRIu64 " MB/s (total: %" PRIu64 " MB), Elapsed %s, PktRec = %i, ErrCount = %i, PktsLost = %i, PER %4.3e\n",
+            fprintf(stderr, "RxRate: %" PRIu64 " MB/s (total: %" PRIu64 " MB) Elapsed %s PktRec = %i ErrCount = %i PktsLost = %i PER %4.3e\n",
                    RxBytes / B1M / interval_s, RxBytesTotal / B1M, elapsed_str, RxPackets, ErrCount, PktsLost, (1.0 * PktsLost / (RxPackets + PktsLost)) );
       } else {
             fprintf(stderr, "Rx rate: %.2f Mbps, rx %" PRIu64 " MB/s (total: %" PRIu64 " MB), Elapsed %s, PktRec = %i\n",
