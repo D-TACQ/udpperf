@@ -25,6 +25,7 @@ struct {
   int quiet{0};
   int maxerrs{9};
   uint64_t maxsamples{0};
+  std::string local_address = "0.0.0.0";
 } Settings;
   
 void fmtElapsedTime(char *str, int tick, int tock) {
@@ -54,6 +55,7 @@ int main(int argc, char *argv[]) {
   app.add_option("-q, --quiet", Settings.quiet, "1: stop reporting");
   app.add_option("-S, --max_samples", Settings.maxsamples, "stop after this many samples, 0: no limit");
   app.add_option("-M, --max_errs", Settings.maxerrs, "stop after this many errors");
+  app.add_option("-a, --local_address", Settings.local_address, "optional local address\neg multiple NICs, one port");
   CLI11_PARSE(app, argc, argv);
 
   static const int BUFFERSIZE{9200};
@@ -77,7 +79,7 @@ int main(int argc, char *argv[]) {
   if (Settings.RtPrio){
     goRealTime(Settings.RtPrio);
   }	  
-  Socket::Endpoint local("0.0.0.0", Settings.UDPPort);
+  Socket::Endpoint local(Settings.local_address, Settings.UDPPort);
   UDPReceiver Receive(local);
   Receive.setBufferSizes(Settings.SocketBufferSize, Settings.SocketBufferSize);
   Receive.printBufferSizes();
