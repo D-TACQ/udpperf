@@ -1,18 +1,49 @@
+#!/bin/sh
+
+RBOOT=0
+
 UUT=$1
 echo $UUT
-runs=${2:-2}
-minutes=${3:-10}
-samples=$(( $minutes*60*1000000 ))
+SR=1000000
+MINUTES=5
+samples=$(( $MINUTES*60*$SR ))
+
+spp=20
+ssb=448
+count_pos=96
+
+
+ACTNIC="enp10s0f0"
+RTPRIORITY=40
+CPUCORE=20
+
+PORT=53676
+
 echo Capture $samples samples
 
-for i in $(seq -w 1 $runs)
+sudo ethtool -r $ACTNIC
+python3 ../acq400_hapi/user_apps/acq2106/hudp_setup.py --tx_ip 10.12.198.128 \
+	--rx_ip 10.12.198.254 --run0='1,2,3,4,5,6 1,16,0' --spp=$spp $UUT none
+
+for i in $(seq -w 1 $RUNS)
 do
 	echo Run $i
 	echo Run $i > logs/run${i}.log
 	date >> logs/run${i}.log 
-	sudo ./udprx -R 40 -p 53676 --spp 20 --ssb 448 -c 96 -S ${samples} >> logs/run${i}.log 2>&1 & PID_RX=$!
+	sudo taskset -c $CPUCORE ./udprx -R $RTPRIORITY -p $PORT --spp $spp --ssb $ssb -c $count_pos -S ${samples} >> logs/run${i}.log 2>&1 & PID_RX=$!
 	python3 ../acq400_hapi/user_apps/acq400/acq400_continuous.py --run=1 $UUT
 	wait  $PID_RX
 	python3 ../acq400_hapi/user_apps/acq400/acq400_continuous.py --stop=1 $UUT
+
+	if [[ $RBOOT -eq 1 ]] && [ $((10#$i % 2)) -eq 0 ] # Reboot after every even run if RBOOT=1
+	then
+		python3 ../acq400_hapi/user_apps/acq400/acq400_reboot.py $UUT
+		sleep 10
+		python3 ../acq400_hapi/user_apps/utils/wait_for_ready.py $UUT
+		sudo ethtool -r $ACTNIC
+		python3 ../acq400_hapi/user_apps/acq2106/hudp_setup.py --tx_ip 10.12.198.128 \
+			--rx_ip 10.12.198.254 --run0='1,2,3,4,5,6 1,16,0' --spp=$spp $UUT none
+	fi
+		
 done
 
