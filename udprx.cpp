@@ -20,11 +20,13 @@ struct {
   int SamplesPerPacket{1};
   int SampleSizeBytes{64};
   int CountColumn{-1};
+  int CountStep{1};
   int RtPrio{0};
   int outfd{-1};
   int quiet{0};
   int maxerrs{9};
   uint64_t maxsamples{0};
+  std::string local_address{"0.0.0.0"};
 } Settings;
   
 void fmtElapsedTime(char *str, int tick, int tock) {
@@ -49,11 +51,13 @@ int main(int argc, char *argv[]) {
   app.add_option("--spp", Settings.SamplesPerPacket, "Samples per packet");
   app.add_option("--ssb", Settings.SampleSizeBytes, "Sample size (bytes)");
   app.add_option("-c, --count_column", Settings.CountColumn, "Count column (indexed from 0)");
+  app.add_option("-t, --step", Settings.CountStep, "Count step (default:1), but may be decimated");
   app.add_option("-R, --rt_prio", Settings.RtPrio, "set POSIX RT priority (0: no set)");
   app.add_option("-o, --output", Settings.outfd, "1: output data to stdout");
   app.add_option("-q, --quiet", Settings.quiet, "1: stop reporting");
   app.add_option("-S, --max_samples", Settings.maxsamples, "stop after this many samples, 0: no limit");
   app.add_option("-M, --max_errs", Settings.maxerrs, "stop after this many errors");
+  app.add_option("-a, --local_address", Settings.local_address, "optional local address\neg multiple NICs, one port");
   CLI11_PARSE(app, argc, argv);
 
   static const int BUFFERSIZE{9200};
@@ -78,7 +82,7 @@ int main(int argc, char *argv[]) {
   if (Settings.RtPrio){
     goRealTime(Settings.RtPrio);
   }	  
-  Socket::Endpoint local("0.0.0.0", Settings.UDPPort);
+  Socket::Endpoint local(Settings.local_address, Settings.UDPPort);
   UDPReceiver Receive(local);
   Receive.setBufferSizes(Settings.SocketBufferSize, Settings.SocketBufferSize);
   Receive.printBufferSizes();
@@ -136,7 +140,7 @@ int main(int argc, char *argv[]) {
                     exit(0);
                 }
             }
-            SpadTracker = SpadTracker + 1;
+            SpadTracker = SpadTracker + Settings.CountStep;
        }
     }
     if (Settings.outfd >= 0){
