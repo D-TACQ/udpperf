@@ -12,6 +12,21 @@
 
 #include "rt.h"
 
+#include <string>
+
+// Get current date/time, format is YYYY-MM-DD.HH:mm:ss
+const std::string currentDateTime() {
+    time_t     now = time(0);
+    struct tm  tstruct;
+    char       buf[80];
+    tstruct = *localtime(&now);
+    // Visit http://en.cppreference.com/w/cpp/chrono/c/strftime
+    // for more information about date/time format
+    strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
+
+    return buf;
+}
+
 
 struct {
   int UDPPort{9000};
@@ -27,6 +42,7 @@ struct {
   int maxerrs{9};
   uint64_t maxsamples{0};
   std::string local_address{"0.0.0.0"};
+  int verbose{0};
 } Settings;
   
 void fmtElapsedTime(char *str, int tick, int tock) {
@@ -58,6 +74,7 @@ int main(int argc, char *argv[]) {
   app.add_option("-S, --max_samples", Settings.maxsamples, "stop after this many samples, 0: no limit");
   app.add_option("-M, --max_errs", Settings.maxerrs, "stop after this many errors");
   app.add_option("-a, --local_address", Settings.local_address, "optional local address\neg multiple NICs, one port");
+  app.add_option("-v, --verbose", Settings.verbose, "increase to get more chatty");
   CLI11_PARSE(app, argc, argv);
 
   static const int BUFFERSIZE{9200};
@@ -117,7 +134,7 @@ int main(int argc, char *argv[]) {
             SpadIndex = i*Settings.SampleSizeBytes + 4*Settings.CountColumn;
 
             SpadCount = *((uint32_t *)( buffer + SpadIndex ));
-            if (samples+i < 5 || deviation == true) {
+            if ((Settings.verbose && samples+i < 5) || deviation == true) {
                 fprintf(stderr, "%#010x    %i %s\n", SpadCount, SpadCount, deviation? "dev":"ini");
 	        deviation = false;
             }
@@ -154,6 +171,7 @@ int main(int argc, char *argv[]) {
       RxBytesTotal += RxBytes;
       time_t tock = time(0);
       fmtElapsedTime(elapsed_str,tick,tock);
+      fprintf(stderr, "%s ", currentDateTime().c_str());
       if (Settings.CountColumn >= 0){
             fprintf(stderr, "RxRate: %" PRIu64 " MB/s (total: %" PRIu64 " MB) Elapsed %s PktRec = %i ErrCount = %i PktsLost = %i PER %4.3e\n",
                    RxBytes / B1M / interval_s, RxBytesTotal / B1M, elapsed_str, RxPackets, ErrCount, PktsLost, (1.0 * PktsLost / (RxPackets + PktsLost)) );
